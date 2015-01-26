@@ -1,0 +1,77 @@
+apply plugin: 'java'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile 'junit:junit:4.10'
+}
+
+task setupTests(type: TestGenerate) {
+    numberOfTests = 20000
+}
+
+test {
+    dependsOn setupTests
+    maxParallelForks = determineMaxParallelForks()
+    systemProperty 'javax.net.ssl.trustStore', '/some/dir/jdk/jre/lib/security/cacerts'
+}
+
+def determineMaxParallelForks() {
+    (Runtime.runtime.availableProcessors() / 2) < 1 ? 1 : Runtime.runtime.availableProcessors() / 2
+}
+
+class TestGenerate extends DefaultTask {
+    @Input
+    Integer numberOfTests
+    
+    @Input
+    String testPackage = 'com.company'
+    
+    @OutputDirectory
+    File destDir = project.file("src/test/java/${testPackage.replaceAll('\\.', '/')}")
+    
+    @TaskAction
+    void generate() {
+        (1..numberOfTests).each { no ->            
+            def testFile = new File(destDir, "DummyTest${no}.java")
+            testFile << createJavaTest(no)
+        }
+    }
+    
+    String createJavaTest(Integer no) {
+        """package ${testPackage};
+
+        import org.junit.Test;
+        import static org.junit.Assert.*;
+
+        public class DummyTest$no {
+            @Test
+            public void testFirst1() {
+                assertSysProp();
+            }
+
+            @Test
+            public void testFirst2() {
+                assertSysProp();
+            }
+    
+            @Test
+            public void testFirst3() {
+                assertSysProp();
+            }
+    
+            @Test
+            public void testFirst4() {
+                assertSysProp();
+            }
+    
+            private void assertSysProp() {
+                String prop = System.getProperty("javax.net.ssl.trustStore");
+                assertEquals(prop, "/some/dir/jdk/jre/lib/security/cacerts");
+            }
+        }
+        """
+    }
+}
